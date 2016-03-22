@@ -1,76 +1,56 @@
 # -*- Mode: python; py-indent-offset: 4; indent-tabs-mode: nil; coding: utf-8; -*-
-VERSION = '0.1'
-APPNAME = 'ndnfit-dsu'
 
-from waflib import Build, Logs, Utils, Task, TaskGen, Configure
+
+VERSION = "0.0.1"
+APPNAME = "group-manager"
+
+from waflib import Logs, Utils, Context
 import os
 
 def options(opt):
-    opt.load('compiler_c compiler_cxx gnu_dirs')
-    opt.load('boost default-compiler-flags doxygen', tooldir=['.waf-tools'])
+    opt.load(['compiler_c', 'compiler_cxx', 'gnu_dirs'])
+    opt.load(['boost', 'default-compiler-flags'],
+             tooldir=['.waf-tools'])
 
-    ropt = opt.add_option_group('ndnfit-dsu Options')
+    syncopt = opt.add_option_group ("GROUP-MANAGER Options")
 
-    ropt.add_option('--with-tests', action='store_true', default=False, dest='with_tests',
-                    help='''build unit tests''')
-
-    ropt.add_option('--without-tools', action='store_false', default=True, dest='with_tools',
-                    help='''Do not build tools''')
-    ropt.add_option('--with-examples', action='store_true', default=False, dest='with_examples',
-                    help='''Build examples''')
+    syncopt.add_option('--debug', action='store_true', default=False, dest='debug',
+                       help='''debugging mode''')
+    syncopt.add_option('--with-tests', action='store_true', default=False, dest='_tests',
+                       help='''build unit tests''')
 
 def configure(conf):
-    conf.load("compiler_c compiler_cxx gnu_dirs boost default-compiler-flags")
+    conf.load(['compiler_c', 'compiler_cxx', 'gnu_dirs', 'boost', 'default-compiler-flags'])
 
     if 'PKG_CONFIG_PATH' not in os.environ:
         os.environ['PKG_CONFIG_PATH'] = Utils.subst_vars('${LIBDIR}/pkgconfig', conf.env)
-    conf.check_cfg(package='libndn-cxx', args=['--cflags', '--libs'],
+    conf.check_cfg(package='libndn-cxx',args=['--cflags', '--libs'],
                    uselib_store='NDN_CXX', mandatory=True)
+    conf.check_cfg(package='ndn-group-encrypt',args=['--cflags', '--libs'],
+                   uselib_store='NDN-GROUP-ENCRYPT', mandatory=True)
+    boost_libs = 'system iostreams'
+    if conf.options._tests:
+        conf.env['NDN_GEP_HAVE_TESTS'] = 1
+        conf.define('NDN_GEP_HAVE_TESTS', 1);
+        boost_libs += ' unit_test_framework'
 
-    if conf.options.with_tests:
-        conf.env['WITH_TESTS'] = True
+    conf.check_boost(lib=boost_libs)
 
-    conf.env['WITH_TOOLS'] = conf.options.with_tools
-    conf.env['WITH_EXAMPLES'] = conf.options.with_examples
-
-    USED_BOOST_LIBS = ['system', 'iostreams', 'filesystem', 'random']
-    if conf.env['WITH_TESTS']:
-        USED_BOOST_LIBS += ['unit_test_framework']
-    conf.check_boost(lib=USED_BOOST_LIBS, mandatory=True)
-
-    try:
-        conf.load("doxygen")
-    except:
-        pass
-
-#    conf.define('DEFAULT_CONFIG_FILE', '%s/ndn/repo-ng.conf' % conf.env['SYSCONFDIR'])
-
-#    conf.write_config_header('src/config.hpp')
+    conf.write_config_header('config.hpp')
 
 def build(bld):
-    bld(target="ndnfit-dsu-objects",
-        name="ndnfit-dsu-objects",
+    bld(target="group-manager-objects",
+        name="group-manager-objects",
         features=["cxx"],
         source=bld.path.ant_glob(['src/**/*.cpp'],
                                  excl=['src/main.cpp']),
-        use='NDN_CXX BOOST',
+        use='NDN_CXX BOOST NDN-GROUP-ENCRYPT',
         includes="src",
         export_includes="src",
         )
 
-    bld(target="ndnfit-dsu",
+    bld(target="group-manager",
         features=["cxx", "cxxprogram"],
         source=bld.path.ant_glob(['src/main.cpp']),
-        use='ndnfit-dsu-objects',
+        use='group-manager-objects',
         )
-
-    # Tests
-#    bld.recurse('tests')
-#    bld.recurse("tests/other")
-
-    # Tools
-#    bld.recurse('tools')
-
-#    bld.recurse("examples")
-
-#    bld.install_files('${SYSCONFDIR}/ndn', 'repo-ng.conf.sample')
