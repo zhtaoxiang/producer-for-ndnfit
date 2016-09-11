@@ -70,6 +70,7 @@ namespace SampleProducer {
         ndn::Face m_face;
         ndn::util::Scheduler m_scheduler;
         KeyChain m_keyChain;
+        Link link;
         ndn::gep::Producer producer;
         Data testData;
         shared_ptr<Data> testEncryptedCKey;
@@ -78,8 +79,12 @@ namespace SampleProducer {
     SampleProducer::SampleProducer()
     : m_face(m_ioService) // Create face with io_service object
     , m_scheduler(m_ioService)
-    , producer(Name(USER_PREFIX), Name("fitness"), m_face, DATABASE, 3, Link(USER_READ_PREFIX, {{10, "/a"}}))
+    , link(USER_READ_PREFIX, {{10, "/a"}})
+    , producer(Name(USER_PREFIX), Name("fitness"), m_face, DATABASE, 3, ([](Link & in_link, KeyChain & in_keyChain){in_keyChain.sign(in_link); return in_link;}(link, m_keyChain)))
     {
+//        Link link(USER_READ_PREFIX, {{10, "/a"}});
+//        m_keyChain.sign(link);
+//        new (&producer) ndn::gep::Producer(Name(USER_PREFIX), Name("fitness"), m_face, DATABASE);
         Name contentKeyName = producer.createContentKey(time::fromIsoString("20160321T092000"),
                                                         bind(&SampleProducer::checkEKey, this, _1));
         std::cout << "ContentKeyName: " << contentKeyName << std::endl;
